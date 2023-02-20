@@ -1,0 +1,73 @@
+
+
+
+STATIC PODS
+
+What are they?
+They are pods created by the kubelet on its own, without the intervention from the kube API server or the rest of the kubernetes cluster components.
+
+*Only pods can be created this way. (not replica sets or deployments)  Replica sets and deployments require other cluster plane components.
+
+
+HOW TO CREATE A STATIC POD?
+
+- You configure the kubelet to read the pod definition files from a directory on the server designated to store information about pods.
+- Place the pod definition files in this directory.
+- Not only does the kubelet create pods, it ensures that the pod stays alive if the app crashes.
+
+NB If you remove a file from this directory, the pod is deleted.
+   Kubelet (NOT Controller Manager) watches static Pods and restarts them if they fail
+
+What is the designated folder to store the pod definition files?
+It could be any directory on the host, and the location of directory is passed into the kubelet as an option while running the service.
+
+One way to find this is to look at the *kubelet conf file* which  can be found at /var/lib/kubelet/config.yaml
+* cat /var/lib/kubelet/config.yaml                         (displays the kubelet configuration file. Remember kubelets creates pods)
+
+-There is a specification in the file that says "staticPodPath"
+ eg staticPodPath: /etc/kubernetes/manifests           
+
+-Once the static pods are created,you can view them by running the "Docker ps" command. 
+(A kube control command is not used to because it works with the cluster & remember we dont have the rest of the cluster componenents here)
+
+
+Kubelet can create pods from different inputs...
+1. The first is through the pod definition files, from the static pods folder.
+2. The second is through an ETCD API endpoint.And that is how the kube API server(how API server provides input to Kubelet)
+
+Kubelets can create both kinds of pods at the same time
+
+
+WHY USE STATIC PODS?
+You can use static pods to deploy the control plane components itself as pods on a node.
+
+A. How to deploy control plane components as pods (STATIC)
+i. Start by installing kubelet on all the master nodes
+ii. Create pod definition files that uses Docker images of the various control plane components
+such as the API server controller etcd, etc
+iii. Place the definition files in the designated manifest folder, and the kubelet takes care of deploying the control plane
+components themselves as pods on the cluster
+
+STATIC PODS VS DAEMON SETS
+STATIC  PODS                                                          DAEMON SETS
+I.Created by Kubelet                                          I.Created by Kube-API server(DaemonSet Controller)
+II.Deploy Control Plane components as Static Pods              II.Deploy Monitoring Agents,Logging agents on nodes     
+
+# One way to identify static pods is that, they have their node name appended to it.
+*kubectl get pod -A          (display all pods in all namespaces)
+-any pod that is listed with its node name by it is a STATIC POD
+
+
+
+REGULAR POD SCHEDULING
+
+1.API Server gets the request
+2.Scheduler: which Node?
+3.Kubelet: schedules Pod
+4.Etcd: stores pod data
+
+STATIC POD SCHEDULING
+Kubelet: schedules Pod
+
+
+
