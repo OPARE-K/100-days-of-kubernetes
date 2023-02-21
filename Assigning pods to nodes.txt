@@ -1,0 +1,226 @@
+- Pods are automatically scheduled on one of the worker Nodes
+- Scheduler decides intelligently, where to place the Pod
+- In some cases, we may want to decide ourselves
+
+
+ASSIGNING PODS TO NODES (Part 1)
+
+Node Affinity, Taints & Tolerations
+ 
+What are they?
+Taints and tolerations are used to set restrictions on what pods can be scheduled on nodes.
+
+Taints are set on nodes and toleratons are set on pods.
+
+
+How to taint a node?
+
+*kubectl taint nodes <nodename> <key=value>:<taint-effect> 
+ kubectl taint nodes node01 app=blue:NoSchedule
+ 
+taint-effect: defines what will happen to the pod if they do not tolerate the taint.
+
+
+There are 3 taints effects
+1. NoSchedule - Means pods will not be scheduled on node
+2. PreferNoSchedule -  The system will try to avoid placing a pod on the node(not guaranteed)
+3. NoExecute - New pods will not be scheduled on the node and existing pods on the node if any will be evicted if they do not tolerate the taint.
+
+
+Adding tolerations to a pod
+- In the spec section of the pod definition file,add a section called, 'tolerations',
+- move the same values used while creating the taint
+
+NOTE: All the  values added under  pod tolerations are encoded in double quotes.  
+eg
+ tolerations:
+ - key: "app"
+   operator: "Equal"
+   value: "blue"
+   effect: "NoSchedule"
+
+
+Node Name: It's the simplest form of selecting a Node
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+    - image: nginx
+      name: nginx
+  nodeName: worker1
+
+
+
+
+Node Selector
+But what if we have
+
+  - Dynamic Node Names?
+      * So you don't know the names beforehand
+      * Common in cloud environments
+
+
+  - Not enough resources?
+
+  
+  - Node Selector
+      * Attach label to the Node
+      * Add NodeSelector field to Pod configuration
+
+
+
+  - Get all the Node labels
+
+      kubectl get node --show-labels
+
+
+  - Add label (type=storage) to one of our nodes
+
+      kubectl label node worker2 type=storage
+
+
+  - Double-check the node labels again
+
+ apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+    - image: nginx
+      name: nginx
+  nodeSelector:
+    type: storage
+
+
+  - You can delete the labels like so:
+       kubectl label node worker2 type=storage
+
+
+       
+  ASSIGNING PODS TO NODES PART 2
+
+  - nodeSelector
+     * More flexibility over nodename
+     * If not enough resources, Pods won't be scheduled
+     * More flexible expressions
+
+
+
+  NODE AFFINITY:
+  -  Similar to nodeSelector, but affinity language is more expressive.
+  -  Match labels more flexible with logical operators
+      In                                     
+      Not In
+      Exists
+      DoesNotExists
+      Gt
+      Lt
+
+
+Operators:
+
+  - Exists:
+       Match Nodes that have a specific label defined
+       Value doesn't matter
+  - DoesNotExist:
+       Do NOT have specific label key
+  - In:
+       Match Nodes that have a specific label (key=value) defined
+       Value does matter
+  - Not In:
+       Do NOT have specific label key=value
+  - Gt
+       Greater than
+  - Lt
+      Less than
+  
+
+
+  - You can define multiple rules         (Rules are applied during sheduling & execution) i.e the lifecycle of pods.
+  - Currently, 2 types of node affinity rules:
+       "hard" = required
+          Specified rules MUST be met
+          Similar to nodeSelector
+       
+
+       "soft" = preferred
+          Specified rules are preferences
+          Scheduler will try to enforce, if failed, scheduled Pods somewhere else
+
+*Refer to documentation for the syntax*
+
+
+  - Node must have:
+      Label key: kubernetes.io/e2e-az-name
+      Label value: e2e-az1 or e2e-az2
+      
+       spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:                           <=== Node affinity type                 
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/e2e-az-name
+            operator: In
+            values:
+            - e2e-az1
+            - e2e-az2
+
+#Means pods will be created either in nodes e2e-az1 or e2e-az2
+
+
+  - Node should have:
+     Label key: another-node-label-key
+     Label value: another-node-label-value
+     
+      spec:
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:                       <=== Node affinity type
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: another-node-label-key
+              operator: In
+              values:
+              - another-node-label-value
+
+
+  
+NODE AFFINITY DEMO
+  
+  Our Rule should be:
+     
+     MUST: Linux Nodes
+     PREFERRED: type=cpu
+ 
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: with-node-affinity
+spec:
+  containers:
+    - image: nginx
+      name: myapp
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                  - linux
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 1
+          preference:
+            matchExpressions:
+              - key: type
+                operator: In
+                values:
+                  - cpu  
+   
