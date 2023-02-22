@@ -1,0 +1,112 @@
+RESOURCE REQUIREMENTS & LIMITS
+
+What are Resource requests and limits?
+Resource requests and limits are parameters used in Kubernetes to control the amount of compute resources that a container can use.
+
+
+Scheduler - Places pods on a node
+
+- The scheduler takes into consideration the amount of resources required by a pod and those available on the nodes
+
+- If the node has no sufficient resources,the scheduler avoids placing the pod on that node.
+  Instead, places the pod on one where sufficient resources are available.
+
+-If there is no sufficient resources available on any of the nodes, K8's holds back scheduling the pod and puts the pod in  "PENDING" state.
+
+
+
+Configure resource requests for each container.
+
+Requests is what the container is granted to get
+  - K8s Scheduler uses this to figure out where to run the Pods
+  - Resource Limits
+
+
+RESOURCE REQUIREMENTS FOR EACH POD
+
+k8's pod requirements
+                        -
+CPU = 0.5                |---------------->Request limit
+MEMORY = 256 mebibyte   -
+                                
+-Request limits can be adjusted to suit preferred specification in the pod/deployment definition files.
+
+
+ 
+RESOURCE LIMITS
+
+Why are they so important?
+   i. Container will consume more than the requested resources.
+   ii. If not limited,container could consume all the Node's resources.
+
+
+
+Configure resource requests for each container
+   - Make sure container never goes above a certain value.
+   - Container is only allowed to go up to the limit.
+
+
+
+
+Configure Request and limits
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-resource
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: my-app
+          image: nginx
+          resources:                                                                           # under resources is where resource limits are specified.
+            requests:
+              memory: "64Mi" # Memory resources are defined in "bytes"
+              cpu: "250m" # CPU resources are defined in "millicores"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+        - name: log-sider
+          image: busybox
+          command: [ 'sh', '-c', "while true; do echo sync app logs; sleep 20; done" ]
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+
+- Best practice: Keep CPU and request at 1 or below
+- If you put values larger than your biggest Node, your Pod will never be scheduled!
+
+
+
+WHAT HAPPENS WHEN A CONTAINER/POD TRIES TO EXCEEDS RESOURCES BEYOND ITS SPECIFIED LIMITS?
+ 
+  - In case of CPU - K8's throttles the CPU so that it does not go beyond the specified limit.
+  - In case of memory - A container can use more memory resources than its limit, however if the pod CONSTANTLY tries to consume more memory
+    than its limit the pod is TERMINATED.
+
+
+
+
+
+
+
+
+
+QUERYING DEFINED RESOURCES & LIMITS.
+Which Pods have Resource Requests * Limits set?
+
+kubectl get pod -o jsonpath="{range .items[*]} {.metadata.name}{.spec.containers[*].resources}{'\n'}"
