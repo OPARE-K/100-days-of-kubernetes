@@ -1,0 +1,76 @@
+MONITORING & LOGGING
+
+  - LOGGING: Collecting  and analyzing log data from different components of the cluster. 
+
+     Tools:
+        - Fluentd
+        - Elasticsearch
+        - Kibana
+        - splunk
+
+   
+
+
+
+
+  - MONITORING: collecting and analyzing metrics from different components of the Kubernetes cluster. 
+      eg. monitoring Performance metric such as CPU,Memory,Network & disk utilization
+
+      Tools:
+         - Prometheus
+         - Elastic stack
+         - Metrics server
+
+
+ 
+   WHICH  METRICS TO MONIOR?
+ Metrics can be monitored at the Node level or the Pod level. 
+
+
+    
+
+  MONITORING METRICS ON NODE LEVEL (eg cpu, memory, disc utilization)
+
+
+   - The Metrics Server retrieves metrics, from each of the Kubernetes nodes and pods , aggregates them, and stores them in memory
+
+   # The metric server is only an in-memory monitoring solution and does not store the metrics on the disk.
+
+
+
+
+  MONITORING METRICS ON A POD LEVEL (eg cpu, memory, disc utilization) 
+
+     - kubelet  is responsible for receiving instructions from the Kubernetes API master server & running pods on the node.(Remember kubelet run pods on a nodes )
+
+     - kubelet contains a sub-component cAdvisor/container advisor
+
+
+
+
+ cAdvisor is responsible for retrieving performance metrics from pods and exposing them through the kubelet API to make the metrics available for the Metrics Server.
+   cAdvisor===>kubelet===>metrics server
+
+
+  # When using minicube, run the command
+      minikube addons enable metrics-server
+
+ 
+
+
+
+  # In other environments deploy a metics-server
+      git clone https://github.com/kubernetes-incubator/metrics-server.git
+
+      - use kubectl create command to deploy the required components after cloning
+
+   This command deploys a set of pods, services, and roles to enable Metrics Server to pull for performance metrics from the nodes in the cluster.
+
+
+  # To view cluster performance
+     kubectl top node 
+
+
+  
+
+
