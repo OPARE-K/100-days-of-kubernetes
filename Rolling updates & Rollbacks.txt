@@ -4,7 +4,7 @@ ROLLING UPDATES AND ROLLBACKS
 
 
     * When updating the Deployment, what happens to the Deployment?
-          - Will the old Pods removed first and then restarting them?
+          - Will the old Pods be removed first and then restarted?
           - Application Downtime?
 
 
