@@ -1,0 +1,206 @@
+UPGRADING KUBERNETES CLUSTER 
+
+
+
+
+
+How Cluster Update works?
+
+1. Upgrade Control Plane 
+     * Cons
+         - Control Plane processes not available
+         - No application downtime
+         - Mangement functionalities not available
+         - Crashed Pods won't be rescheduled
+
+     
+     * Solution
+         - Have more than 1 Control Plane Node
+         - Upgrade each Node one by one
+
+
+2. Upgrade Worker Nodes
+
+  
+
+Control Plane Components & its versions
+   *There are different components on Control Plane and Worker Nodes
+
+      i.  kube-apiserver
+      ii. kube-scheduler
+      iii. controller-manager
+
+
+
+
+ What components are we upgrading?
+
+How are they versioned?
+
+   * kube-apiserver must have a latest version
+   * kubectl: 1 version later/earlier
+   * Recommended: Upgrading to same version
+
+
+How to upgrade the k8s components?
+
+The way you upgrade the cluster depends on how you initially deployed it...
+
+  * Same versioning as K8s components
+  
+  1. Upgrade kubeadm tool
+  2. With kubeadm, upgrade all Control Plane components and renew cluster certificates
+       * kubeadm upgrade apply 1.24.0
+  3. Drain Nodes to remove all Pods
+       * kubeadm drain master
+       - Will evict all Pods safely 
+       - Will be marked as unshedulable
+
+  4. Upgrade kubelet and kubectl 
+  5. Change Master back to schedulable
+     *kubectl uncordon master
+
+
+
+
+How to Upgrade Worker Nodes
+
+1. Upgrade kubeadm
+   * kubeadm upgrade apply 1.24.0
+
+2. Execute kubeadm to upgrade all kubelet configuration
+3. Drain the Nodes 
+   * Pods will be rescheduled on other Nodes
+
+4. Upgrade Kubelet
+5. Change Worker Node back to scheduled
+
+
+Best Practices
+  * Upgrade Worker Nodes one by one!
+  * At least 2 Worker Nodes
+  * At least 2 Pod Replicas
+  * No application downtime
+
+
+
+Draining Nodes
+ * kubectl drain worker1
+     - Marked as unschedulable
+     - Evict all Pods
+ 
+ * Kubectl cordon worker
+     CORDON: Only mark unschedulable
+     Existing Pods will stay on Node
+
+* Kubectl uncordon worker1
+     UNCORDON: Marks Node schedulable
+     Existing Pods will stay on Node
+
+
+
+
+WHEN TO UPGRADE?
+When and how often should you upgrade?
+
+
+* Use Case: Fix in later K8s version, which affects your cluster
+    - Best Practice: You should always keep your cluster up-to-date
+
+* Kubernetes supports only up to recent 3 versions
+    - Recommended: Upgrade 1 version at a time
+
+
+
+
+
+DEMO: UPGRADE CLUSTER
+
+In this chapter, we will go through updating the K8s cluster with all the best practices... 
+ 
+ 
+Upgrade Control Plane
+
+   
+Upgrade Kubeadm
+  
+   * switch to sudo mode
+       sudo -i
+
+   * See all the available version
+       apt-cache madison kubeadm
+
+Upgrade Kubeadm:
+    # replace x in 1.24.x-00 with the latest patch version
+apt-get update && \
+  apt-get install -y --allow-change-held-packages kubeadm=1.24.x-00
+
+ 
+
+Verify that the download works and has the expected versions:
+    kubeadm version
+
+
+Upgrade Control Plane components
+   * Verify the upgrade plan 
+
+Choose a version to upgrade to, and run the appropriate command.
+    # replace x with the patch version you picked for this upgrade
+    sudo kubeadm upgrade apply v1.24.x
+
+
+* Important Note: The above command (kubeadm upgrade apply) is only run on the FIRST master!
+
+  For the other control plane nodes:
+
+  Same as the first control plane node but use: sudo kubeadm upgrade node
+
+  instead of: sudo kubeadm upgrade apply
+
+
+
+Now if you get all pods in kube-system namespace, you'll see all the static Pods has restarted...
+  
+
+But if you get node ( kubectl get node )you'll see that your node version is still the old version...
+
+
+Drain the Node
+
+* Prepare the node for maintenance by marking it unschedulable and evicting the workloads
+
+  # replace <node-to-drain> with the name of your node you are draining
+    kubectl drain <node-to-drain> --ignore-daemonsets
+
+
+Now if you get the nodes (kubectl get node), you'll see Ready/SchedulingDisable in status section.
+
+
+Upgrade Kubelet and Kubectl 
+   * sudo -i
+
+
+Switch to sudo mode
+
+# replace x in 1.24.x-00 with the latest patch version
+apt-get update && \
+  apt-get install -y --allow-change-held-packages kubelet=1.24.x-00 kubectl=1.24.x-00
+
+
+
+Restart the Kubelet
+   * systemctl daemon-reload
+   * systemctl restart kubelet
+
+
+Uncordon the Node
+  * Bring the node back online by marking it schedulable
+   # replace <node-to-drain> with the name of your node
+kubectl uncordon <node-to-drain>
+
+
+Upgrade the Workers
+ Basically go through all over this process again and again!
+
+
+Refer to documentation for guidance!
