@@ -1,0 +1,374 @@
+DATA PERSISTENCE
+
+Persisting Data with Volumes
+
+Introduction to Kubernetes Volumes, How to persist data in K8s using volumes?
+  
+* Persistent Volume
+
+* Persistent Volume
+
+* Storage Class
+
+
+THE NEED FOR VOLUMES 
+
+
+Storage Requirements
+
+ 1. Storage that doesn't depend on the pod lifecycle.
+
+ 2. Storage must be available on all nodes
+
+ 3. Storage neeeds to survive even if the cluster crashes.
+
+
+
+Persistent Volume
+
+ * Persistent Volume is more like A cluster resource. (like CPU & RAM)
+ 
+ * Create via a YAML file
+     - kind: PersistentVolume
+     - spec: e.g., how much storage?
+
+ * Needs actual physical storage like: 
+     - Cloud Storage
+     - NFS server
+     - Local disk
+
+
+Where does this Storage come from, and who makes it available to the cluster?
+  
+  * What Type of Storage do you need?
+  * You need to create and manage them, by yourself 
+  
+#  Think of Storage as an external plugin to your cluster
+
+
+
+
+Persistent Volume YAML Example
+  * NFS Storage
+
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-name
+spec:
+  capacity:
+    storage: 5Gi # How much
+  volumeMode: Filesystem
+  accessModes: # Additional params, like access
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: slow
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+  nfs: # Nfs parameters
+    path: /tmp
+    server: 172.17.0.2
+
+
+
+
+* Google Cloud
+   
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: test-volumes
+  labels:
+    failure-domain.beta.kubernetes.io/zone: us-centrall-a__us-centrall-b
+spec:
+  capacity:
+    storage: 400Gi # How much
+  accessModes:
+    - ReadWriteOnce
+  gcePersistentDisk: # Google Cloud Parametes
+    pdName: my-data-disk
+    fsType: ext4
+
+
+
+* local Storage
+   
+   apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: test-pv
+spec:
+  capacity:
+    storage: 100Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: local-storage
+  local:
+    path: /mnt/disks/ssd1
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+
+
+* Depending on storage type, spec attributes are different.
+
+
+
+Persistent Volumes are NOT namespaced
+  * PV outside of namespaces
+ 
+  * Accessible to the whole cluster
+
+
+Local vs Remote VOlume Types
+
+  * Each Volume type has its use cases!
+ 
+  * Local volume types violate 2. and 3. requirement for data persistence: 
+      - Being tied to 1 specific node
+      - Surviving cluster crashes
+
+  * For DB persistence, use remote storage!
+
+
+
+Who creates Persistence Volumes?
+   
+  * Who creates the Persistent Volumes, and when?
+      - K8s Administrator and K8s user
+
+  * PV are resources that need to be there BEFORE the pods that depends on it is created...
+
+  * Admin provisions storage resources.
+
+  * Creates the PV components from these storgae backends.
+
+
+
+Persistent Volume Claim
+
+  * Application has to claim the Persistent Volume
+
+  * We use that PVC in pods configurations 
+
+  * PVC
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-name
+spec:
+  storageClassName: manual
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+
+
+ 
+Pod
+ 
+ apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  containers:
+    - name: myapp
+      image: nginx
+      volumeMounts:
+        - mountPath: "/var/www/html"
+          name: mypd
+  volumes:
+    - name: mypd
+      persistentVolumeClaim:
+        claimName: pvc-name # The name of the PVC
+
+
+
+
+Levels of Volume abstractions 
+  
+1. Pod requests the volume through the PV claim
+2. Claim tries to find a volume in the cluster
+3. Claim tries to find a volume in the cluster
+
+
+ * NOTE: Claims must be in the same namespace!
+
+Then:
+
+ 1. Volume is mounted into the pod
+ 2. Volume is mounted into the container
+
+
+
+Why so many abstractions?
+   * Admins provisions storage resource
+   * User creates claim to PV
+
+
+ConfigMap & Secret
+ 
+  * Local volumes
+  * Not created via PV and PVC
+  * Managed by Kubernetes
+  * Configuration file for your pod
+  * Certificate file for your pod
+
+
+1. Create ConfigMap and/or Secret component
+2. Mount that into your pod/container
+
+   
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  containers:
+    - name: myapp
+      image: busybox
+      volumeMounts:
+        - name: config-dir
+          mountPath: /etc/config
+  volumes:
+    - name: config-dir
+      configMap:
+        name: bb-configmap
+
+
+
+
+Storage Class
+
+1. Admins configure storage
+2. Create PV
+3. K8s user claim PV using PVC
+
+
+* 3rd K8s Component, which makes the process more efficient
+
+* SC provisions PV dynamically, when PVC claims it...
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: storage-class-name
+
+# StorageBackend is defined in the SC component via "provisioner" attribute
+# Each storage backend has own provisioner
+# `internal` provisioner - 'kubernetes.io'
+# `external` provisioner
+provisioner: kubernetes.io/aws-ebs 
+parameters: # Configure 'parameters' for storage we want to request for PV
+  type: io1
+  iopsPerGB: "10"
+  fsType: ext4
+
+
+
+* Requested by PersistentVolumeClaim
+ 
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mypvc
+spec:
+  storageClassName: storage-class-name # The CS name
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  
+
+
+Storage Class usage
+ 1. Pod claims storage via PVC
+ 2. PVC requests storage from SC
+ 3. SC creates PV that meets the needs of the Claim
+
+
+Configure HostPath Volume
+  
+Where is the data persisted?
+
+  1. Remote Storage Volumes
+      * Cloud-storage
+      * Remote-storage
+
+  2. Local Volumes
+       * Data is persisted on the K8s Node
+
+  * You should use remote storage especially in Production!
+  * Remote storage systems persist data independednt of the k8s Node, where the data originated. 
+
+
+*hostPath Volume
+   - Simple configuration
+   - But use only for "single node testing". For "multi-node clusters": use the "local" volume type instead.
+   - Also, <hostPath> volumes contain many security risks, and it's best pravtice to avoid the use of <hostPaths> when possible.
+ 
+
+
+
+OVERVIEW
+1. Create PV 
+   - Data is stored on the local; machine
+
+2. Create PVC
+
+3. Create a Deployment to use Volume
+
+
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-data
+spec:
+  hostPath: # Type of PV
+    path: "/mnt/data" # Depending on the type, the attributes differ
+  capacity: # Capacity
+    storage: 10Gi # A PV will have a specific storage capacity
+  accessModes:
+    - ReadWriteOnce
+
+
+
+Volume Plugins
+  - ReadWriteOnce
+  - ReadWriteMany
+  - ReadOnlyMany
+  - ReadWriteOncePod
+
+
+Apply this file and check the PV
+ * kubectl get pv
+
+
+It is now on "Available" status.
+
+ * A volume will be in one of the following phases:
+   - Available : A free resource that is not yet bound to a claim
+   - Bound : The volume is bound to a claim
+   - Released : The claim has been deleted, but the cluster does not yet
+   - Failed : The volume has failed its automatic reclamation
+
+
+
+
+
+
+
