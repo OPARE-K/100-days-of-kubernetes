@@ -1,0 +1,82 @@
+EXTERNAL ACCESS WITH INGRESS
+
+
+Why Ingress?
+
+1. Self-Managed K8s cluster: Create Loadbalancer yourself
+2. Managed K8s cluster: Creates Loadbalancers automatically
+
+
+  * LoadBalancer Disadvantages:
+
+1. LoadBalancer that all become entrypoints
+2. Configure the domain Name
+3. Each LoadBalancer exposes new NodePort
+4. Each LoadBalancer increases the cloud bill
+5. Configure everything outside the cluster
+6. Isn't it good:
+
+* Having this as part of the k8s cluster?
+* Configure secure connection
+* Loadbalancing to different services
+
+
+* INGRESS
+* A K8s component
+* Configure Routing
+* Configure https
+* Ingress is deployed and available inside cluster
+* We need to expose it either as NodePort or Loadbalancer
+* 1 NodePort or Loadbalancer, which is single entrypoint
+
+
+How Ingress works?
+
+* Valid domain address
+* Map domain name to the Ip address, which is the entrypoint
+
+
+ 
+How to configure Ingress?
+
+How to configure Ingress in your clusters?
+ 
+* You need an implementation of Ingress
+* Which is Ingress Controller
+
+
+What is an Ingress Controller?
+* Evaluates and process Ingress rules
+* Manages redirection
+* Entrypoint to cluster
+* Many third-party implementations (Default: K8s Nginx Ingress Controller)
+
+
+Environment on which your cluster runs
+
+  1. Cloud Service provider:
+       - Out-of-the-box K8s solution
+       - own virtualized Loadbalancer
+       - Advantage: You don't have to implement Loadbalancer yourself
+
+
+Cloud LoadBalancer --->Ingress Controller Pod--->Ingress--->service--->pods
+
+
+  
+
+ 2. Bare Metal:
+      - You need to configure some kind of entrypoint
+      - Either inside of the cluster or outside as a separate server (Software or Hardware        solution)
+      - Separate server
+      - Public IP address and open ports
+      - Entrypoint to cluster
+      - No server in the K8s cluster is accessible from outside!
+
+
+
+
+
+
+
+
